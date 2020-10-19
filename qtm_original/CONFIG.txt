@@ -1,0 +1,15 @@
+# Author: Gitanjali Bhattacharjee
+
+To run mahmodel_road_only.py from the command line, 
+
+1. download or clone the entire qtr_original directory
+2. cd into the directory using your shell (for example, Terminal on Mac)
+3. type `python2 mahmodel_road_only.py` (without the quotation marks) in your shell
+
+Note that to run mahmodel.py or mahmodel_road_only.py, you must have a python2 environment or virtual environment with the following settings:
+
+1. Python 2.7
+2. Includes the parallel python package, pp 1.6.5
+3. Includes the networkx package, networkx 1.8
+
+
