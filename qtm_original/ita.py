@@ -4,7 +4,7 @@
 #this code does iterative travel assignment. 
 import sys, util, pdb, math, time
 import networkx as nx
-import bd_test
+import bd
 
 iteration_vals = [0.4, 0.3, 0.2, 0.1] #assign od vals in this amount per iteration. These are recommeded values from the Nature paper, http://www.nature.com/srep/2012/121220/srep01001/pdf/srep01001.pdf
 #iteration_vals = [1.0, 0, 0, 0]
@@ -145,7 +145,7 @@ class ITA:
     origins.sort() # sort them
     origins = [str(i) for i in origins] # make them strings again
 
-    od_dict = bd_test.build_od(self.demand)  # GB BUG FIX #1, continued: sort OD pairs to fix inconsistency across different runs of the traffic assignment
+    od_dict = bd.build_od(self.demand)  # GB BUG FIX #1, continued: sort OD pairs to fix inconsistency across different runs of the traffic assignment
 
     for i in range(len(iteration_vals)): #do 4 iterations
       for origin in origins:
