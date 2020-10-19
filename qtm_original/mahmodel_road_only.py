@@ -148,12 +148,21 @@ def compute_road_performance(G, damaged_bridges_internal, demand, no_damage_trav
 
 def get_graph():
 	import networkx
+	import clean_graph
+
 	'''loads full mtc highway graph with dummy links and then adds a few fake centroidal nodes for max flow and traffic assignment'''
-	G = networkx.read_gpickle("input/graphMTC_CentroidsLength3int.gpickle")
-	G = add_superdistrict_centroids(G)
+	#G = networkx.read_gpickle("input/graphMTC_CentroidsLength3int.gpickle")
+	#G = add_superdistrict_centroids(G)
+	#assert not G.is_multigraph() # Directed! only one edge between nodes
+	#G = networkx.freeze(G) #prevents edges or nodes to be added or deleted
+
+	G = clean_graph.load_corrected_graph()
 	assert not G.is_multigraph() # Directed! only one edge between nodes
-	G = networkx.freeze(G) #prevents edges or nodes to be added or deleted
+	G = networkx.freeze(G)
+
 	return G
+
+
 def save_results(bridge_array_internal, bridge_array_new, travel_index_times, numeps, seed):
 	util.write_2dlist('output/' + time.strftime("%Y%m%d")+'_bridges_flow_path_tt_vmt_bridges_allBridges_roadonly_' + str(numeps) + 'eps_extensive_seed' + str(seed) +'.txt',travel_index_times)
 	with open ('output/' + time.strftime("%Y%m%d")+'_' + str(numeps) + 'sets_damagedBridgesInternal_roadonly_seed' + str(seed) +'.pkl', 'wb') as f:

@@ -5,7 +5,6 @@
 import mahmodel_road_only as mahmodel
 
 import bd, pickle
-import bd_test
 import util
 import networkx as nx
 
