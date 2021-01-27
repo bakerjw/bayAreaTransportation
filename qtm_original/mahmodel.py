@@ -2,7 +2,7 @@
 #Date: February 10, 2014
 
 #import some relevant Python packages
-import pickle, random, pp, pdb, time, networkx
+import pickle, random, pp, pdb, time, networkx, copy
 from scipy.stats import norm
 from math import log
 
@@ -26,16 +26,37 @@ def compute_shortest_paths(damaged_graph, demand):
 	return -1
 
 
-def compute_tt_vmt(damaged_graph, demand):
+def compute_tt_vmt(damaged_graph, demand,flag = 0,cap=3600):
+	#Note by RSL, modified on 01/26/2020
+	#I added the capability of computing travel time as the sum of times between origins and destination by demand. This allows to cap maximum travel time.
+	#New additinal inputs: Flag, if 0, then it is the same as the previous version, if Flag == 1 it uses the modified version
+	#cap = this is the maximum allowed travel time. By default is 3600
 	start = time.time()
 	it = ita.ITA(damaged_graph,demand)
-	newG = it.assign()
+	newG,trips_made,dict_od_times = it.assign()
 	print 'time to assign: ', time.time()-start
-	travel_time = util.find_travel_time(damaged_graph) 
-	vmt = util.find_vmt(damaged_graph)  
+	if flag == 0: #This is the default setting developed by Miller
+		travel_time = util.find_travel_time(damaged_graph)
+	if flag == 1:
+		dict_od_times = it.time_paths()
+		travel_time = 0
+		for origin in dict_od_times:
+			for destination in dict_od_times[origin]:
+				tt_local = dict_od_times[origin][destination][1]
+				if tt_local < cap:
+					travel_time +=  dict_od_times[origin][destination][0]*tt_local
+	vmt = util.find_vmt(damaged_graph)
+
 	''' in the undamaged case, this should be around 172 million (http://www.mtc.ca.gov/maps_and_data/datamart/stats/vmt.htm) over the course of a day, so divide by 0.053 (see demand note in main). BUT our trip table has only around 11 million trips (instead of the 22 million mentioned here: http://www.mtc.ca.gov/maps_and_data/datamart/stats/baydemo.htm because we are looking at vehicle-driver only and not transit, walking, biking, being a passenger in a car, etc. So, that's **8-9 million vehicle-miles divided by 2, which equals around 4 million vehicle-miles!**
 	'''
 	return travel_time, vmt
+
+def compute_tt_od(damaged_graph, demand):
+	#Function that returns dictionary of [Origin][Destination][0=demand][1=travel time]
+	it = ita.ITA(damaged_graph, demand)
+	newG, trips_made, dict_od_times = it.assign()
+	dict_od_times = it.time_paths()
+	return dict_od_times
 
 def add_superdistrict_centroids(G):
 	'''adds 34 dummy nodes for superdistricts'''
@@ -44,7 +65,7 @@ def add_superdistrict_centroids(G):
 	for row in sd_table:
 		i = int(row[0])
 		G.add_node(str(1000000 + i))
-		G.add_edge(str(1000000 + i), str(row[1]), capacity_0 = 100000,  capacity = 100000, lanes =1 , bridges=[], distance_0=1, distance = 1, t_a=1, t_0=1, flow=0, dailyvolume=1) #capacity in vehicles over all lanes, travel time in seconds, length in miles, flow in 
+		G.add_edge(str(1000000 + i), str(row[1]), capacity_0 = 100000,  capacity = 100000, lanes =1 , bridges=[], distance_0=1, distance = 1, t_a=1, t_0=1, flow=0, dailyvolume=1) #capacity in vehicles over all lanes, travel time in seconds, length in miles, flow in
 		G.add_edge(str(1000000 + i), str(row[2]), capacity_0 = 100000,  capacity = 100000, lanes =1 , bridges=[], distance_0=1, distance = 1, t_a=1, t_0=1, flow=0, dailyvolume=1) #capacity in vehicles over all lanes, travel time in seconds, length in miles, flow in 
 		G.add_edge(str(row[3]), str(1000000 + i), capacity_0 = 100000,  capacity = 100000, lanes =1 , bridges=[], distance_0=1, distance = 1, t_a=1, t_0=1, flow=0, dailyvolume=1) #capacity in vehicles over all lanes, travel time in seconds, length in miles, flow in 
 		G.add_edge(str(row[4]), str(1000000 + i), capacity_0 = 100000,  capacity = 100000, lanes =1 , bridges=[], distance_0=1, distance = 1, t_a=1, t_0=1, flow=0, dailyvolume=1) #capacity in vehicles over all lanes, travel time in seconds, length in miles, flow in 
@@ -168,6 +189,7 @@ def get_graph():
 	assert not G.is_multigraph() # Directed! only one edge between nodes
 	G = networkx.freeze(G) #prevents edges or nodes to be added or deleted
 	return G
+
 def save_results(bridge_array_internal, bridge_array_new, travel_index_times, numeps, seed):
     util.write_2dlist('output/' + time.strftime("%Y%m%d")+'_bridges_flow_path_tt_vmt_bridges_allBridges' + str(numeps) + 'eps_extensive_seed' + str(seed) +'.txt',travel_index_times)
     with open ('output/' + time.strftime("%Y%m%d")+'_' + str(numeps) + 'sets_damagedBridgesInternal_seed' + str(seed) +'.pkl', 'wb') as f:
@@ -280,7 +302,7 @@ def main():
 	jobs = []
 
 	for i in targets:
-		jobs.append(job_server.submit(compute_road_performance, (None, bridge_array_internal[i], demand, no_damage_travel_time, no_damage_vmt, no_damage_flow, no_damage_shortest_path, master_dict, targets[i], ), modules = ('networkx', 'time', 'pickle', 'pdb', 'util', 'random', 'math', 'ita', ), depfuncs = (get_graph, add_superdistrict_centroids, damage_bridges, damage_highway_network, measure_performance, compute_flow, compute_shortest_paths, compute_tt_vmt, ))) # functions, modules 
+		jobs.append(job_server.submit(compute_road_performance, (None, bridge_array_internal[i], demand, no_damage_travel_time, no_damage_vmt, no_damage_flow, no_damage_shortest_path, master_dict, targets[i], ), modules = ('networkx', 'time', 'pickle', 'pdb', 'util', 'random', 'math', 'ita','copy' ), depfuncs = (get_graph, add_superdistrict_centroids, damage_bridges, damage_highway_network, measure_performance, compute_flow, compute_shortest_paths, compute_tt_vmt, ))) # functions, modules
 
 	# get the results that have already run and save them
 	travel_index_times = []
